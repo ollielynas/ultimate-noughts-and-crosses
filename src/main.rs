@@ -96,9 +96,13 @@ impl MiniSquare {
 
         move_options.sort_by(|a, b| a.1.cmp(&b.1));
         for option in move_options {
-            if self.boxes[((option.0) as f32 / 3.0).floor() as usize][option.0 as usize - ((option.0) as f32 / 3.0).floor() as usize * 3] == E {
-                self.boxes[((option.0) as f32 / 3.0).floor() as usize][option.0 as usize - ((option.0) as f32 / 3.0).floor() as usize * 3] = O;
-                break
+            if self.boxes[((option.0) as f32 / 3.0).floor() as usize]
+                [option.0 as usize - ((option.0) as f32 / 3.0).floor() as usize * 3]
+                == E
+            {
+                self.boxes[((option.0) as f32 / 3.0).floor() as usize]
+                    [option.0 as usize - ((option.0) as f32 / 3.0).floor() as usize * 3] = O;
+                break;
             }
         }
     }
@@ -135,11 +139,10 @@ impl MiniSquare {
                         0 => X,
                         _ => O,
                     };
-                    score += hypothetical_future.score(depth - 1);
+                score += hypothetical_future.score(depth - 1);
             } else {
                 continue;
             };
-
         }
 
         return score;
@@ -158,17 +161,19 @@ fn remf(f: f32) -> f32 {
 fn remi(i: i32) -> f32 {
     remf(i as f32)
 }
+const DEBUG: bool = true;
 
 #[macroquad::main("naughts and crosses")]
 async fn main() {
     let mut mini_square = MiniSquare::blanks();
     mini_square.bot_move();
-    mini_square.boxes[0][0] = X;
     mini_square.bot_move();
 
-    // mini_square.bot_move();
+    // mini_square.boxes[0][0] = X;
     // mini_square.bot_move();
 
+    // mini_square.bot_move();
+    // mini_square.bot_move();
 
     let example_squares = vec![
         [[E, X, E], [E, X, E], [E, E, E]],
@@ -179,13 +184,14 @@ async fn main() {
         [[E, E, X], [E, O, E], [E, X, E]],
         [[O, O, O], [E, X, E], [E, E, E]],
         [[E, E, E], [X, X, O], [E, O, E]],
+        [[E, E, E], [E, X, O], [O, E, E]],
+
     ];
+    let mut mini = vec![];
     for example_square in example_squares {
-        let mini = MiniSquare {
+        mini.push(MiniSquare {
             boxes: example_square,
-        };
-        mini.print();
-        println!("{}\n", mini.score(5));
+        });
     }
 
     fn draw_game_grid(x: f32, y: f32, game: MiniSquare) {
@@ -194,11 +200,15 @@ async fn main() {
         draw_line(emi(3) + x, y, emi(3) + x, emi(9) + y, emf(0.2), BLACK);
         draw_line(emi(6) + x, y, emi(6) + x, emi(9) + y, emf(0.2), BLACK);
         if is_mouse_button_pressed(MouseButton::Left) {
-            for x in 0..3 {
-                for y in 0..3 {
-
+            for x2 in 0..3 {
+                for y2 in 0..3 {
+                    let mouse = mouse_position();
+                    if mouse.0 > emi(x2*3) + x && mouse.0 < emi(x2*3 + 3) + x 
+                    && mouse.1 > emi(y2*3) + y && mouse.1 < emi(y2*3 + 3) + y 
+                        {
+                    }
                 }
-            } 
+            }
         }
 
         for index in 0..9 {
@@ -206,12 +216,48 @@ async fn main() {
                 [index as usize - ((index) as f32 / 3.0).floor() as usize * 3]
             {
                 X => {
-                    draw_text("X", x + emf(0.55) + emi(index* 3), y +emf(2.5)+ emi(index* 3), emi(4), BLACK);
+                    draw_text(
+                        "X",
+                        x + emf(0.55 + 3.0 * (index as f32 - (index as f32 / 3.0).floor() * 3.0)),
+                        y + emf(2.5 + 3.0 * (index as f32 / 3.0).floor()),
+                        emi(4),
+                        BLACK,
+                    );
                 }
                 O => {
-                    draw_text("O", x + emf(0.55) + emi(index* 3), y +emf(2.5)+ emi(index* 3), emi(4), BLACK);
+                    draw_text(
+                        "O",
+                        x + emf(0.55 + 3.0 * (index as f32 - (index as f32 / 3.0).floor() * 3.0)),
+                        y + emf(2.5 + 3.0 * (index as f32 / 3.0).floor()),
+                        emi(4),
+                        BLACK,
+                    );
                 }
-                _ => {}
+                _ => {
+                    if DEBUG {
+                        let mut copy_of_game = game.clone();
+
+                        if copy_of_game.boxes[(index as f32 / 3.0).floor() as usize]
+                            [index - ((index as f32 / 3.0).floor() as usize * 3)]
+                            == E
+                        {
+                            copy_of_game.boxes[(index as f32 / 3.0).floor() as usize]
+                                [index - ((index as f32 / 3.0).floor() as usize * 3)] = O;
+                            let mini_box_score = copy_of_game.score(5);
+                            draw_text(
+                                &format!("{}", mini_box_score),
+                                x + emf(3.1 * (index as f32 - (index as f32 / 3.0).floor() * 3.0)),
+                                y + emf(2.8 + 3.0 * (index as f32 / 3.0).floor()),
+                                emf(1.1),
+                                match mini_box_score > 0 {
+                                    true if mini_box_score == 0 => GRAY,
+                                    true => GREEN,
+                                    false => RED,
+                                },
+                            );
+                        }
+                    }
+                }
             }
         }
     }
@@ -219,13 +265,31 @@ async fn main() {
     loop {
         clear_background(WHITE);
         draw_game_grid(emi(60), emi(5), mini_square);
+
+        draw_game_grid(emi(1), emi(1), mini[0]);
+        draw_game_grid(emi(12), emi(1), mini[1]);
+        draw_game_grid(emi(23), emi(1), mini[2]);
+
+        draw_game_grid(emi(1), emi(12), mini[3]);
+        draw_game_grid(emi(12), emi(12), mini[4]);
+        draw_game_grid(emi(23), emi(12), mini[5]);
+
+        draw_game_grid(emi(1), emi(23), mini[6]);
+        draw_game_grid(emi(12), emi(23), mini[7]);
+        draw_game_grid(emi(23), emi(23), mini[8]);
+
         let mini_score = mini_square.score(5);
+        draw_text("score", emi(60), emi(18), emf(2.0), BLACK);
         draw_text(
-            &format!("score {mini_score}"),
-            emi(60),
+            &format!("{mini_score}"),
+            emi(65),
             emi(18),
             emf(2.0),
-            BLACK,
+            match mini_score > 0 {
+                true if mini_score == 0 => GRAY,
+                true => GREEN,
+                false => RED,
+            },
         );
 
         next_frame().await
